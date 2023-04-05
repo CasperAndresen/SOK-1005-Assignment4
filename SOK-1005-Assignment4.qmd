@@ -1,0 +1,123 @@
+---
+title: "SOK-1005-Assignment4"
+author: "Casper Andresen"
+format: pdf
+editor: visual
+---
+
+```{r}
+rm (list = ls())
+library(tidyverse)
+library(janitor) 
+library(lubridate)
+library(zoo)
+library(quantmod)
+options(dplyr.summarise.inform = FALSE)
+```
+
+```{r}
+df <- read.csv("https://raw.githubusercontent.com/uit-sok-1005-v23/uit-sok-1005-v23.github.io/main/storedata.csv") %>%
+  clean_names()
+```
+
+## Task 1
+
+```{r}
+df$order_date <- as.Date(df$order_date, "%Y-%m-%d")
+
+table1 <- df %>%
+  filter(between(order_date, as.Date('2017-10-1'), as.Date('2017-12-31'))) %>%
+  filter(region %in% c("Region 1", "Region 9")) %>%
+  filter(customer_segment %in% c("Corporate", "Consumer")) %>%
+  mutate(year = year(order_date)) %>%
+  mutate(month = month(order_date)) %>%
+  group_by(region, month, customer_segment) %>% 
+  summarize(total_sales = sum(sales))
+
+table1
+```
+
+```{r}
+figure1 <- df %>%
+  mutate(year = year(order_date)) %>%
+  mutate(month = month(order_date)) %>%
+  filter(region %in% c("Region 1", "Region 13")) %>%
+  filter(year %in% c("2015", "2016", "2017")) %>%
+  group_by(region, month, year) %>% 
+  summarize(total_sales = sum(sales)) %>%
+  mutate(date = zoo::as.yearmon(paste(year, month), "%Y %m"))
+ 
+figure1 <- subset(figure1, select = -c(month, year))
+
+figure1 %>%
+  ggplot(aes(x=date, y=total_sales, color=region)) +
+  labs(title = "Monthly total sales (2015 - 2017)", x = "Month",
+  y = "Total sales") +
+  theme(axis.text.x = element_text(angle = 40, hjust = 1)) +
+  geom_line()
+```
+
+```{r}
+table2 <- figure1 %>%
+  pivot_wider(names_from = region, values_from = total_sales) %>%
+  filter(`Region 13` > `Region 1`)
+  
+table2
+```
+
+```{r}
+table3 <- df %>%
+  mutate(year = year(order_date)) %>%
+  mutate(month = month(order_date)) %>%
+  filter(year == 2017) %>%
+  filter(!region %in% c("Region 3", "Region 5", "Region 8")) %>%
+  group_by(region, customer_segment, product_category) %>% 
+  summarize(avg_profit = mean(profit))
+
+table3
+
+```
+
+# Task 2
+
+```{r}
+xom <- data.frame(getSymbols("XOM", src = "yahoo", from = "2010-1-04", to = "2022-12-31", auto.assign = FALSE)) %>%
+  clean_names() %>%
+  rownames_to_column(., var = 'date')
+
+xom$date <- as.Date(xom$date, "%Y-%m-%d")
+
+xom <- xom %>%
+  mutate(year = year(date)) %>%
+  mutate(month = month(date)) %>%
+  group_by(year, month) %>%
+  summarise(exxon = weighted.mean(xom_adjusted, xom_volume)) %>%
+  mutate(date = make_date(year, month))
+
+
+```
+
+```{r}
+brent <- data.frame(getSymbols("DCOILBRENTEU", src = "FRED",from = "2010-1-04", to = "2022-12-31", auto.assign = FALSE)) %>%
+  clean_names() %>%
+  rownames_to_column(., var = 'date')
+
+brent <- brent %>%
+  mutate(year = year(date)) %>%
+  mutate(month = month(date)) %>%
+  group_by(year, month) %>%
+  summarise(oil= mean(dcoilbrenteu, na.rm=TRUE)) %>%
+  mutate(date = make_date(year, month))
+
+```
+
+```{r}
+ggplot() + 
+  geom_line(data = brent, aes(x=date,y=oil, col = "oil")) +
+  geom_line(data = xom, aes(x=date,y=exxon,col="exxon")) +
+  labs(title = "Average prices", x = "Date",
+  y = "Price (USD)") +
+  theme_minimal()
+```
+
+On the figure we can clearly see the 2014/15 drop in oil prices. The drop didn't have much effect on Exxons stock prices.
