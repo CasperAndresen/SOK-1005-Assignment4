@@ -113,8 +113,8 @@ brent <- brent %>%
 
 ```{r}
 ggplot() + 
-  geom_line(data = brent, aes(x=date,y=oil, col = "oil")) +
-  geom_line(data = xom, aes(x=date,y=exxon,col="exxon")) +
+  geom_line(data = brent, aes(x=date, y=oil, col = "oil")) +
+  geom_line(data = xom, aes(x=date, y=exxon, col="exxon")) +
   labs(title = "Average prices", x = "Date",
   y = "Price (USD)") +
   theme_minimal()
